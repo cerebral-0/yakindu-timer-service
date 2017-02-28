@@ -26,11 +26,12 @@ typedef struct tsEventItem {
 
 //extern eventItem_typedef pool[MAX_EVENTS];
 
-eventItem_typedef* elInit();
-void elAddItem(eventItem_typedef* head, void* smHandle, sc_eventid evid, sc_integer time_ms, sc_boolean periodic);
-void elRemoveByID(eventItem_typedef* head, sc_eventid evid);
-void elRemoveFromTop(eventItem_typedef* list);
-void elSortByRemainingTime(eventItem_typedef* head);
+void elAddItem(eventItem_typedef** eventsList, void* smHandle, sc_eventid evid, sc_integer time_ms, sc_boolean periodic);
+void elRemoveByID(eventItem_typedef** eventsList, sc_eventid evid);
+void elRemoveFromTop(eventItem_typedef** eventsList);
+void elSortByRemainingTime(eventItem_typedef** eventsList);
+void elUpdateRemainigTime(eventItem_typedef** eventsList, uint32_t time);
+
 static eventItem_typedef* elGetBlockFromPool(eventItem_typedef* pool);
 static void elReturnBlockToPool(eventItem_typedef* pool, eventItem_typedef* item);
 
