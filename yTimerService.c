@@ -12,45 +12,53 @@
 extern eventItem_typedef* eventsList;
 
 void ytsSetTimer(void* handle, const sc_eventid evid, const sc_integer time_ms, const sc_boolean periodic){
-	if(!eventsList) eventsList = elInit();
-
-	elAddItem(eventsList, handle, evid, time_ms, periodic);
+	elAddItem(&eventsList, handle, evid, time_ms, periodic);
 
 	// if added event goes on top of events list we should update interrupt time and all items remaining times as well
 	if(eventsList->evid == evid){
-		hwTimerStop();
-		uint32_t tempTime = hwTimerGetTime();
-		hwTimerSetTimer(time_ms);
-		hwTimerStart();
-		for(uint8_t itm = 1; eventsList[itm].next; itm++){
-			eventsList[itm].remainingTime_ms -= tempTime;
+		if (eventsList->next){
+			hwTimerStop();
+			uint32_t tempTime = hwTimerGetTime();
+			hwTimerSetTimer(time_ms);
+			hwTimerStart();
+			elUpdateRemainigTime(&eventsList, hwTimerGetTime());
+		} else {
+			hwTimerSetTimer(time_ms);
+			hwTimerStart();
 		}
 	}
 }
 
 void ytsUnsetTimer(void* handle, const sc_eventid evid){
-	if(eventsList[0].evid == evid){
-		hwTimerStop();
-		if(eventsList[0].next){
-			hwTimerSetTimer(eventsList[0].next->remainingTime_ms);
+	hwTimerStop();
+	if(eventsList->evid == evid){
+		if(eventsList->next){
+			uint32_t timerReduceVal = eventsList->remainingTime_ms - hwTimerGetTime();
+			elUpdateRemainigTime(&eventsList, timerReduceVal);
+			elRemoveFromTop(&eventsList);
+			hwTimerSetTimer(eventsList->remainingTime_ms);
 			hwTimerStart();
+		} else {
+			elRemoveFromTop(&eventsList);
 		}
 	}
 	elRemoveByID(eventsList, evid);
+	hwTimerStart();
 }
 
 void ytsTimerCallback(){
 	hwTimerStop();
-	uint32_t tempTime = hwTimerGetTime();
-	for(uint8_t itm = 1; eventsList[itm].next; itm++){
-		eventsList[itm].remainingTime_ms -= tempTime;
-	}
-	if(eventsList[0].periodic){
-		eventsList[0].remainingTime_ms = eventsList[0].time_ms;
-		elSortByRemainingTime(eventsList);
+	elUpdateRemainigTime(&eventsList, eventsList->remainingTime_ms);
+	if(eventsList->periodic){
+		eventsList->remainingTime_ms = eventsList->time_ms;
+		elSortByRemainingTime(&eventsList);
+
 	} else {
-		elRemoveFromTop(eventsList);
+		elRemoveFromTop(&eventsList);
 	}
+	hwTimerSetTimer(eventsList->remainingTime_ms);
+	hwTimerStart();
+
 }
 
 
