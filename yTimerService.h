@@ -8,7 +8,7 @@
 #ifndef YTIMERSERVICE_H_
 #define YTIMERSERVICE_H_
 
-#include "include/sc_types.h"
+#include "sc_types.h"
 
 #define MAX_EVENTS 50
 

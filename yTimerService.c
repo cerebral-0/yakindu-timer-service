@@ -6,9 +6,9 @@
  */
 
 #include "yTimerService.h"
-#include "include/eventsList.h"
-#include "include/hwTimerManagement.h"
-
+#include "eventsList.h"
+#include "hwTimerManagement.h"
+#include "Yscttmr.h"
 extern eventItem_typedef* eventsList;
 
 void ytsSetTimer(void* handle, const sc_eventid evid, const sc_integer time_ms, const sc_boolean periodic){
@@ -21,7 +21,7 @@ void ytsSetTimer(void* handle, const sc_eventid evid, const sc_integer time_ms, 
 			uint32_t tempTime = hwTimerGetTime();
 			hwTimerSetTimer(time_ms);
 			hwTimerStart();
-			elUpdateRemainigTime(&eventsList, hwTimerGetTime());
+			if(tempTime) elUpdateRemainigTime(&eventsList, tempTime, false);
 		} else {
 			hwTimerSetTimer(time_ms);
 			hwTimerStart();
@@ -30,39 +30,54 @@ void ytsSetTimer(void* handle, const sc_eventid evid, const sc_integer time_ms, 
 }
 
 void ytsUnsetTimer(void* handle, const sc_eventid evid){
+	if(!eventsList) return;
 	hwTimerStop();
 	if(eventsList->evid == evid){
 		if(eventsList->next){
 			uint32_t timerReduceVal = eventsList->remainingTime_ms - hwTimerGetTime();
-			elUpdateRemainigTime(&eventsList, timerReduceVal);
+			elUpdateRemainigTime(&eventsList, timerReduceVal, false);
 			elRemoveFromTop(&eventsList);
 			hwTimerSetTimer(eventsList->remainingTime_ms);
 			hwTimerStart();
 		} else {
 			elRemoveFromTop(&eventsList);
 		}
+	} else {
+		elRemoveByID(&eventsList, evid);
+		hwTimerStart();
 	}
-	elRemoveByID(eventsList, evid);
-	hwTimerStart();
 }
+//extern yscttmr_raiseTimeEvent(const Yscttmr* handle, sc_eventid evid);
 
 void ytsTimerCallback(){
-	hwTimerStop();
-	elUpdateRemainigTime(&eventsList, eventsList->remainingTime_ms);
-	if(eventsList->periodic){
-		eventsList->remainingTime_ms = eventsList->time_ms;
-		elSortByRemainingTime(&eventsList);
+	if(!eventsList) return;
+	if(eventsList->next){
+		hwTimerStop();
+		yscttmr_raiseTimeEvent(eventsList->handle, eventsList->evid);
+
+		uint32_t timeToDecrease = eventsList->remainingTime_ms;
+		elUpdateRemainigTime(&eventsList, eventsList->remainingTime_ms, true);
+		if(eventsList->periodic){
+			eventsList->remainingTime_ms = eventsList->time_ms;
+			elSortByRemainingTime(&eventsList);
+		} else {
+			elRemoveFromTop(&eventsList);
+		}
+		hwTimerSetTimer(eventsList->remainingTime_ms);
+		hwTimerStart();
 
 	} else {
-		elRemoveFromTop(&eventsList);
+		yscttmr_raiseTimeEvent(eventsList->handle, eventsList->evid);
+		if(eventsList->periodic){
+			eventsList->remainingTime_ms = eventsList->time_ms;
+			hwTimerSetTimer(eventsList->remainingTime_ms);
+			return;
+		} else {
+			hwTimerStop();
+			elRemoveFromTop(&eventsList);
+		}
 	}
-	hwTimerSetTimer(eventsList->remainingTime_ms);
-	hwTimerStart();
-
 }
-
-
-
 
 
 
