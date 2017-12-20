@@ -14,7 +14,6 @@ extern eventItem_typedef* eventsList;
 void ytsSetTimer(void* handle, const sc_eventid evid, const sc_integer time_ms, const sc_boolean periodic){
 	elAddItem(&eventsList, handle, evid, time_ms, periodic);
 
-	// if added event goes on top of events list we should update interrupt time and all items remaining times as well
 	if(eventsList->evid == evid){
 		if (eventsList->next){
 			hwTimerStop();
@@ -47,7 +46,6 @@ void ytsUnsetTimer(void* handle, const sc_eventid evid){
 		hwTimerStart();
 	}
 }
-//extern yscttmr_raiseTimeEvent(const Yscttmr* handle, sc_eventid evid);
 
 void ytsTimerCallback(){
 	if(!eventsList) return;

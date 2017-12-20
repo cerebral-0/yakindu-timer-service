@@ -9,7 +9,7 @@
 #include "yTimerService.h"
 
 static volatile eventItem_typedef pool[MAX_EVENTS];
-
+extern yscttmr_raiseTimeEvent(const Yscttmr* handle, sc_eventid evid);
 eventItem_typedef* eventsList = NULL;
 
 static bool poolFirstAlloc = true;
@@ -25,7 +25,6 @@ eventItem_typedef* elGetBlockFromPool(eventItem_typedef* pool){
         if(pool[itm].allocated == false){
             retVal = &(pool[itm]);
             pool[itm].allocated = true;
-
             break;
         }
     }
@@ -47,7 +46,6 @@ void elAddItem(eventItem_typedef** eventsList, void* smHandle, sc_eventid evid, 
 
     if(tempEvent == NULL)
     {
-
         while(1);
     }
 
@@ -79,7 +77,6 @@ void elRemoveByID(eventItem_typedef** eventsList, sc_eventid evid){
     		elRemoveFromTop(eventsList);
 			return;
     	} else return;
-
     }
 
     eventItem_typedef* eventPrev = *eventsList;
@@ -92,7 +89,6 @@ void elRemoveByID(eventItem_typedef** eventsList, sc_eventid evid){
     if (event->evid == evid){
     	eventPrev->next = event->next;
 		elReturnBlockToPool(pool, event);
-
     } else return;
 }
 
@@ -114,15 +110,17 @@ void elUpdateRemainigTime(eventItem_typedef** eventsList, uint32_t time, bool in
     while(iter->next){
         iter->remainingTime_ms -= time;
         if((iter->remainingTime_ms > iter->time_ms)||(iter->remainingTime_ms == 0)){
-            //asm("nop"); //TODO: call event handler !
-//            elRemoveByID(eventsList, iter->evid);
+            //asm("nop"); //call event handler
+        	yscttmr_raiseTimeEvent(iter->handle, iter->evid);
+            elRemoveByID(eventsList, iter->evid);
         }
         iter = iter->next;
     }
     iter->remainingTime_ms -= time;
     if((iter->remainingTime_ms > iter->time_ms)||(iter->remainingTime_ms == 0)){
-        //asm("nop"); //TODO: call event handler !
-//        elRemoveByID(eventsList, iter->evid);
+        //asm("nop"); //TODO: call event handler
+    	yscttmr_raiseTimeEvent(iter->handle, iter->evid);
+        elRemoveByID(eventsList, iter->evid);
     }
 }
 
@@ -134,8 +132,7 @@ void elSortByRemainingTime(eventItem_typedef** eventsList){
 
 static eventItem_typedef* bisectList(eventItem_typedef* head)
 {
-    /* The fast pointer moves twice as fast as the slow pointer. */
-    /* The prev pointer points to the node preceding the slow pointer. */
+
     eventItem_typedef *fast = head, *slow = head, *prev = NULL;
 
     while (fast != NULL && fast->next != NULL)
@@ -174,11 +171,7 @@ eventItem_typedef *mergeSort(eventItem_typedef *head)
     {
         return list1;
     }
-
     eventItem_typedef *list2 = bisectList(list1);
-
-
-
     return mergeList( mergeSort(list1), mergeSort(list2) );
 }
 
